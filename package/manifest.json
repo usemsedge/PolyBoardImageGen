@@ -1,0 +1,7 @@
+{
+  "id": "boardcaptureloop",
+  "version": "0.1.0",
+  "authors": ["BoardCaptureLoop"],
+  "name": "Board Capture Loop",
+  "description": "Create ten terrain-only board captures and projected grid overlays."
+}

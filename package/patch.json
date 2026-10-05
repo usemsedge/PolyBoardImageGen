@@ -1,0 +1,16 @@
+{
+  "tribeData": {
+    "boardcaptureloop": {
+      "color": 12632256,
+      "language": "",
+      "startingTech": [],
+      "category": 0,
+      "priceTier": 0,
+      "bonus": 0,
+      "startingUnit": "none",
+      "idx": -1
+    }
+  },
+  "gameType": { "boardcaptureloop": { "idx": -1 } },
+  "gameMode": { "boardcaptureloop": { "idx": -1 } }
+}
