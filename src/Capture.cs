@@ -8,6 +8,7 @@ internal static class Capture
 {
     internal static void Save(string prefix, int size)
     {
+        if (size < 1 || size > 100) throw new ArgumentOutOfRangeException(nameof(size), "Supported square maps have 1–100 tiles per side.");
         int width = Screen.width, height = Screen.height;
         if (width <= 0 || height <= 0) throw new InvalidOperationException("No render area available.");
         var camera = CameraController.Camera;
@@ -21,9 +22,7 @@ internal static class Capture
         Texture2D? image = null;
         try
         {
-            buffer = new RenderTexture(width, height, 24);
-            image = new Texture2D(width, height, TextureFormat.RGB24, false);
-            camera.targetTexture = buffer;
+            camera.targetTexture = null;
             camera.orthographic = true;
             camera.aspect = (float)width / height;
 
@@ -34,7 +33,7 @@ internal static class Capture
             Vector3 midpoint = origin + (alongX + alongY) * ((size - 1) / 2f);
             Vector3 displacement = midpoint - position;
             camera.transform.position += right * Vector3.Dot(displacement, right) + up * Vector3.Dot(displacement, up);
-            float extent = (size - 1) / 2f + 4f;
+            float extent = (size - 1) / 2f + 5f;
             float horizontal = extent * (Mathf.Abs(Vector3.Dot(alongX, right)) + Mathf.Abs(Vector3.Dot(alongY, right)));
             float vertical = extent * (Mathf.Abs(Vector3.Dot(alongX, up)) + Mathf.Abs(Vector3.Dot(alongY, up)));
             camera.orthographicSize = Mathf.Max(vertical, horizontal / camera.aspect) * 1.05f;
@@ -51,9 +50,38 @@ internal static class Capture
                         throw new InvalidOperationException("Projected board exceeds capture bounds.");
                 }
 
-            Vector3 p = camera.WorldToViewportPoint(origin);
-            Vector3 px = camera.WorldToViewportPoint(origin + alongX);
-            Vector3 py = camera.WorldToViewportPoint(origin + alongY);
+            int tilePixels = CaptureResolution.ParseTarget(Environment.GetEnvironmentVariable("BOARDCAPTURELOOP_TILE_PIXELS"));
+            Vector3 p = default, px = default, py = default;
+            bool sized = false;
+            for (int iteration = 0; iteration < 8; iteration++)
+            {
+                p = camera.WorldToViewportPoint(origin);
+                px = camera.WorldToViewportPoint(origin + alongX);
+                py = camera.WorldToViewportPoint(origin + alongY);
+                (width, height) = CaptureResolution.Calculate(width, height,
+                    (double)px.x - p.x, (double)px.y - p.y,
+                    (double)py.x - p.x, (double)py.y - p.y, tilePixels, SystemInfo.maxTextureSize);
+                camera.aspect = (float)width / height;
+                camera.orthographicSize = Mathf.Max(vertical, horizontal / camera.aspect) * 1.05f;
+                p = camera.WorldToViewportPoint(origin);
+                px = camera.WorldToViewportPoint(origin + alongX);
+                py = camera.WorldToViewportPoint(origin + alongY);
+                double edgeX = Math.Sqrt(Math.Pow(((double)px.x - p.x) * width, 2) + Math.Pow(((double)px.y - p.y) * height, 2));
+                double edgeY = Math.Sqrt(Math.Pow(((double)py.x - p.x) * width, 2) + Math.Pow(((double)py.y - p.y) * height, 2));
+                if (Math.Min(edgeX, edgeY) >= tilePixels) { sized = true; break; }
+            }
+            if (!sized) throw new InvalidOperationException("Could not achieve the requested tile pixel size with a stable camera projection.");
+            foreach (float x in new[] { -extent, extent })
+                foreach (float y in new[] { -extent, extent })
+                {
+                    var point = camera.WorldToViewportPoint(midpoint + x * alongX + y * alongY);
+                    if (point.z <= 0 || point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1)
+                        throw new InvalidOperationException("Projected board exceeds final capture bounds.");
+                }
+            buffer = new RenderTexture(width, height, 24);
+            if (!buffer.Create()) throw new InvalidOperationException($"Could not allocate the {width}x{height} capture render target. Lower BOARDCAPTURELOOP_TILE_PIXELS.");
+            image = new Texture2D(width, height, TextureFormat.RGB24, false);
+            camera.targetTexture = buffer;
             var vx = new[] { ((double)px.x - p.x) * width, ((double)p.y - px.y) * height };
             var vy = new[] { ((double)py.x - p.x) * width, ((double)p.y - py.y) * height };
             double ax = (double)p.x * width, ay = (1d - p.y) * height + (vx[1] + vy[1]) / 8d;
@@ -64,7 +92,7 @@ internal static class Capture
             File.WriteAllBytes(prefix + ".png", image.EncodeToPNG());
             var grid = new
             {
-                size, width, height, anchor = new[] { ax, ay }, stepX = vx, stepY = vy,
+                size, width, height, targetTilePixels = tilePixels, anchor = new[] { ax, ay }, stepX = vx, stepY = vy,
                 sideLengthPixels = Math.Sqrt(vx[0] * vx[0] + vx[1] * vx[1]),
                 otherSideLengthPixels = Math.Sqrt(vy[0] * vy[0] + vy[1] * vy[1])
             };

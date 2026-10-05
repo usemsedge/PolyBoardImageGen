@@ -1,7 +1,7 @@
 {
   "id": "boardcaptureloop",
-  "version": "0.1.0",
+  "version": "0.2.2",
   "authors": ["BoardCaptureLoop"],
   "name": "Board Capture Loop",
-  "description": "Create ten terrain-only board captures and projected grid overlays."
+  "description": "Capture final two-player replay states from a resumable CSV queue, with normal and fully revealed player views and grid overlays."
 }
