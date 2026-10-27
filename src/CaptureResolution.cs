@@ -35,7 +35,7 @@ internal static class CaptureResolution
         int limit = Math.Min(textureLimit, MaxDimension);
         if (!double.IsFinite(outputWidth) || !double.IsFinite(outputHeight) || outputWidth > limit || outputHeight > limit ||
             outputWidth < 1 || outputHeight < 1 || outputWidth * outputHeight > MaxPixels)
-            throw new InvalidOperationException($"A {target}-pixel tile target exceeds the GPU/image limits ({limit} pixels per dimension, {MaxPixels:N0} pixels total). Lower BOARDCAPTURELOOP_TILE_PIXELS.");
+            throw new InvalidOperationException($"A {target}-pixel tile target exceeds the GPU/image limits ({limit} pixels per dimension, {MaxPixels:N0} pixels total). Lower target_tile_pixels in settings.json.");
         return ((int)outputWidth, (int)outputHeight);
     }
 }

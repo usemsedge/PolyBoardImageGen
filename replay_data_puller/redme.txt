@@ -1,0 +1,160 @@
+REPLAY DATA PULLER - COMPLETE IMPLEMENTATION PLAN
+
+Context and goal
+----------------
+Create a self-contained, resumable collector for replay links in Downloads HAR
+files. Save ALL game versions and ALL attempted server responses, including
+failures and unfinished games.
+
+This is an implementation plan, not a claim that collection is implemented or
+running. No commit or push is requested. Preserve unrelated project changes.
+
+1. Import and deduplicate links
+------------------------------
+- Default input: Downloads/*.har; support explicit repeatable --har paths.
+- Inspect HAR string values and base64-encoded response content for Polytopia
+  share links. Validate UUIDs, normalize links, and deduplicate by UUID while
+  preserving first-discovery order. Read one HAR at a time.
+- Never copy unrelated HAR data, cookies, or credentials into the output.
+- Merge links into replays.csv with exactly two columns: status,link.
+- Preserve existing statuses; add new links as unseen. Accept legacy t/f and
+  seen/unseen values without discarding completed work.
+- Write queue changes atomically and prevent concurrent writers with a lock.
+
+2. Expanded status column
+-------------------------
+unseen                  Imported; not attempted.
+processing              Attempt started; recoverable after interruption.
+saved_ended             Accessible ended game; complete response saved.
+saved_unfinished        Accessible non-ended game; complete response saved.
+saved_no_snapshot       Successful game response without readable final snapshot.
+not_found               Definitive game-not-found result after allowed fallback.
+access_denied           Explicit denial; do not bypass it.
+api_error               Other definitive API-level failure; responses retained.
+retry_network           Network failure; eligible on a later invocation.
+retry_http              Transient HTTP/service failure; eligible later.
+retry_rate_limited      Rate limit reached; pause batch and retry later.
+retry_auth              Missing/expired authentication; stop for normal sign-in.
+retry_invalid_response  Unexpected/malformed response; retain for inspection.
+error                   Local/unexpected failure requiring inspection.
+
+Default processing selects unseen, interrupted processing, and retryable states.
+Attempt each eligible entry at most once per invocation; do not loop forever.
+Skip definitive results unless explicitly selected using --retry-status.
+Refreshing an unfinished game requires an explicit retry. Persistence failures
+stop the batch rather than advancing the queue without a saved response.
+
+3. Vendor and reuse the replay extractor
+---------------------------------------
+- Copy all reviewed source/documentation files from the downloaded
+  PolytopiaReplayExtractor-main.zip into extractor/. Record provenance/hash.
+- Preserve upstream code and document intentional patches. Read files before
+  reuse. Do not execute install-cli.sh or downloaded installers.
+- Reuse UUID parsing, local JWT discovery, endpoint constants, and snapshot
+  helpers from api.py. Load reviewed modules explicitly, independent of cwd.
+- Run Python with -I. Keep response data separate from executable source.
+- Saving responses must not require lz4, full GameState deserialization,
+  a recognized game version, or an ended game.
+- Do not use the extractor's reduced build_output as the archive: it drops
+  response fields. Do not use its ended-only gate or response cache.
+- Avoid upstream logging/error paths that expose bodies, authorization headers,
+  credentials, or curl command arguments.
+
+4. Standalone collector implementation
+--------------------------------------
+- Add a standard-library Python CLI: pull_replays.py.
+- Options: --har, --csv, --output, --limit, --delay, --import-only,
+  and --retry-status. Resolve default paths independently of working directory.
+- Read the signed-in user's existing JWT locally. Never print it, embed it in
+  source, save request Authorization headers, or pass it in command arguments.
+- Follow the extractor's authenticated POST pathway with a GameId JSON body:
+  https://polytopia-prod.net/api/game/get_game_view_model
+  then, on eligible API-level failure:
+  https://polytopia-prod.net/api/game/spectate_game
+- Retain both responses when fallback is attempted. Do not use fallback to work
+  around authentication failure, explicit access challenges, or rate limits.
+- Use verified TLS, bounded timeouts, defensive size/disk handling, and streaming
+  persistence where practical. Label partial/oversized responses incomplete.
+- Prefer urllib. On certificate trust failure, use verified-TLS curl with
+  credentials passed through stdin configuration, not argv. Never use -k.
+- Preserve non-200 response bodies and distinguish transport failures from
+  game-not-found. Never mark transient errors permanently missing.
+
+5. Response archive contract
+----------------------------
+- Directory: data/<replay-uuid>/<unique-attempt>/.
+- Save exact body bytes for each attempted endpoint: successful/unsuccessful
+  JSON, non-JSON, non-200, and partial responses when available.
+- Metadata: endpoint, UTC timestamps, HTTP status, response headers, body file,
+  completeness, transport result, and parsed API error code/game state.
+- Preserve ALL original fields and initialGameStateData/currentGameStateData
+  base64 strings. Raw responses are authoritative, not reconstructed JSON.
+- Read initial/final wrapper and payload version headers when possible. Keep
+  unknown versions, mismatches, malformed blobs, and missing snapshots; record
+  the issue rather than filtering or discarding the response.
+- Optionally save decoded snapshot .bin files. Decoding failure must not prevent
+  raw-response preservation.
+- Preserve previous attempts. Persist processing before networking and final
+  status only after response persistence. Write metadata atomically.
+- Bodies/headers may contain private information. Keep archives local/private,
+  out of logs and git. Capture everything means server responses, not local
+  JWTs or request credentials. Do not upload archives automatically.
+- Add local .gitignore rules for data, queue CSVs, locks, caches, and logs.
+
+6. Pacing and operational limits
+--------------------------------
+- Target about 1,000 replay checks per hour: 3.6 seconds per replay on average,
+  including request time. This is not a guaranteed rate. Add randomized timing,
+  sessions with log normal gaps, minimum gaps
+- Process sequentially. Every request, including fallback, counts toward pacing;
+  two-endpoint replays may take longer. Do not burst to catch up.
+- Provide configurable conservative spacing and small random jitter to reduce
+  synchronized traffic
+- Honor Retry-After, back off on transient failures, and pause/stop on HTTP429,
+  authentication expiry, access challenges, repeated service/network failures,
+  or persistence errors. Resume from saved progress once resolved.
+
+7. Actual game-code integration: separate investigation
+------------------------------------------------------
+The Python extractor calls the same endpoints but does NOT execute the installed
+game's networking implementation. For literal execution of the game's code:
+- Investigate an in-game mod using the initialized PolytopiaBackendAdapter and
+  inherited BackendAdapter methods:
+    GetGameViewModelByIdHttp(GetGameViewModelBindingModel)
+    SpectateGameHttp(SpectateGameBindingModel)
+- Prefer these HTTP methods to the obsolete non-HTTP alternatives.
+- Verify installed-client signatures. Historical dumps contain signatures, not
+  native implementations; interop DLLs alone are not a standalone game runtime.
+- Account for initialized game/session state, Unity threading, native tasks,
+  object lifetimes, cancellation, and response/error handling.
+- Use the legitimate initialized client behavior without fabricating identities
+  or copying fingerprints to bypass service protections.
+- Determine whether native transport permits raw response capture. Typed
+  responses can lose unknown fields, headers, and original bytes. Serializing
+  a typed GameViewModel is NOT exact capture of the server response.
+- Do not replace the raw-response archive with typed-only output or claim exact
+  capture without verifying the native transport mechanism. Keep this optional
+  integration separate until it satisfies the same archive contract.
+
+8. Execution and verification order
+-----------------------------------
+1) Write this plan into redme.txt before implementing.
+2) Review/vendor extractor files and record provenance.
+3) Implement import, CSV persistence/locking, statuses, transport, response
+   storage, pacing, and CLI. Use CRLF for all source files.
+4) Add standard-library unittest fixtures covering plain/base64 HAR content,
+   escaped links, deduplication, CSV merge/legacy states, interrupted runs,
+   all statuses, fallback response retention, unknown/malformed versions,
+   unfinished games, authentication, rate limiting/Retry-After, HTTP5xx,
+   non-JSON/partial/network failures, disk failures, and safe curl credentials.
+5) Run tests without live API requests.
+6) Import the real Downloads HAR and report the actual unique-link count;
+   earlier inspection found approximately 4,397 links.
+7) Run a small live smoke batch; inspect saved metadata and queue states without
+   printing private response bodies. Verify primary/fallback preservation.
+8) Execute the remaining queue in the background with conservative pacing and
+   stop-on-auth/rate-limit safeguards. Report any early stop faithfully.
+9) Report processed/remaining counts, status distribution, observed versions,
+   elapsed time, and output paths. Downloads do not prove in-game renderability.
+10) Investigate actual native game-code integration separately as above; do not
+    describe endpoint-compatible Python calls as native game-code execution.

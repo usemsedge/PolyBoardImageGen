@@ -1,0 +1,8 @@
+{
+  "show_grid_overlay": true,
+  "num_iterations": 10,
+  "csv_filename": "Polytopia Tribe Evaluator Calculator - Google Form.csv",
+  "target_tile_pixels": 128,
+  "input_mode": "gamestates",
+  "gamestates_directory": "gamestates"
+}

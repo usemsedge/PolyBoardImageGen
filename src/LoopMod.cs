@@ -12,8 +12,9 @@ namespace BoardCaptureLoop;
 public static class LoopMod
 {
     private const string Id = "boardcaptureloop";
-    private const int Total = 10;
-    private const string CsvName = "Polytopia Tribe Evaluator Calculator - Google Form.csv";
+    private static CaptureSettings? settings;
+    private static FileStream? outputLock;
+    private static int Total => settings?.NumIterations ?? 0;
     private enum Phase { Idle, Next, Download, Load, Render, Unload }
     private static ManualLogSource? log;
     private static UIRoundButton_UI2? button;
@@ -72,10 +73,15 @@ public static class LoopMod
         if (manager.isLoadingGame || manager.isLevelLoaded) return;
         try
         {
-            string csv = Environment.GetEnvironmentVariable("BOARDCAPTURELOOP_CSV") ?? Path.Combine(PolyMod.Plugin.MODS_PATH, CsvName);
-            catalog = ReplayCatalog.Open(csv);
+            settings = CaptureSettings.Load(Path.Combine(PolyMod.Plugin.MODS_PATH, "settings.json"));
+            catalog = ReplayCatalog.Open(settings.CsvFilename);
             source = new ReplaySource();
-            output = new ReplayOutput(Path.Combine(PolyMod.Plugin.BASE_PATH, "Maps", "replay-captures"));
+            string root = Path.Combine(PolyMod.Plugin.BASE_PATH, "Maps", "replay-captures");
+            Directory.CreateDirectory(root);
+            outputLock = new FileStream(Path.Combine(root, ".capture.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            CaptureMigration.Run(root, catalog, message => log!.LogInfo(message));
+            output = new ReplayOutput(root);
+            CaptureStatistics.Rebuild(root, Path.Combine(root, "output.json"), message => log!.LogWarning(message));
             foreach (ReplayEntry completed in catalog.GetCompleted())
             {
                 if (output.TryRecover(completed.Id, out _)) continue;
@@ -126,7 +132,7 @@ public static class LoopMod
                 session = null;
                 if (cancelled) { Finish("Replay capture cancelled."); return; }
                 if (attemptFailed) { EndFailedAttempt(); return; }
-                if (++view < 4) SetPhase(Phase.Load);
+                if (++view < 2) SetPhase(Phase.Load);
                 else Publish();
                 return;
             }
@@ -144,7 +150,7 @@ public static class LoopMod
                 case Phase.Load:
                     if (manager.isLevelLoaded || manager.isLoadingGame) return;
                     var player = players[view % 2];
-                    session = new CaptureSession(snapshot!.Bytes, entry!.Id, player.Index, player.Id, view >= 2);
+                    session = new CaptureSession(snapshot!.Bytes, entry!.Id, player.Index, player.Id, false);
                     SetPhase(Phase.Render);
                     log!.LogInfo($"Replay load starting: player {session.PlayerId}, {(session.Revealed ? "revealed" : "normal")}.");
                     session.Load();
@@ -156,7 +162,7 @@ public static class LoopMod
                     if (MapRenderer.Current == null || !MapRenderer.Current.IsRendered) { session.SettledFrames = 0; return; }
                     if (++session.SettledFrames < 5) return;
                     string mode = session.Revealed ? "revealed" : "normal";
-                    session.CaptureTo(Path.Combine(attempt!.DirectoryPath, $"player-{session.PlayerId}-{mode}"));
+                    session.CaptureTo(Path.Combine(attempt!.DirectoryPath, $"player-{session.PlayerId}-{mode}"), entry!.Id, settings!, message => log!.LogInfo(message));
                     BeginUnload();
                     break;
             }
@@ -168,7 +174,7 @@ public static class LoopMod
     {
         if (done >= Total || next >= queue!.Count)
         {
-            Finish($"Captured {done}/{Total} replays ({done * 4} clean images, overlays, and metadata files each); skipped {skipped}, retryable failures {failed}.");
+            Finish($"Captured {done}/{Total} replays ({done * 2} clean images, grid files, and annotation files; {(settings!.ShowGridOverlay ? done * 2 : 0)} overlays); skipped {skipped}, retryable failures {failed}.");
             return;
         }
         entry = queue[next++];
@@ -181,6 +187,16 @@ public static class LoopMod
         {
             catalog!.Mark(entry.Id, ReplayStatus.Done, manifest!.DirectoryPath);
             log!.LogInfo($"Recovered published capture {entry.Id:D} without rendering again.");
+            return;
+        }
+        if (settings!.InputMode == "gamestates")
+        {
+            Guid localId = entry.Id;
+            string directory = settings.GamestatesDirectory;
+            download = Task.Run(() => ReplaySource.LoadLocal(localId, directory), cancellation!.Token);
+            _ = download.ContinueWith(t => { _ = t.Exception; }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            SetPhase(Phase.Download);
+            log!.LogInfo($"Reading local replay {entry.Id:D} ({done + 1}/{Total}).");
             return;
         }
         // Access native account/path APIs only here on the Unity thread. Reading the
@@ -241,20 +257,33 @@ public static class LoopMod
         if (players[0].Id == players[1].Id || players.Any(p => p.Id == PlayerState.NO_PLAYER_ID))
             throw new InvalidDataException("Replay participants have invalid or duplicate player identities.");
         int size = CaptureSession.ValidateMap(state);
-        attempt = output!.Begin(entry!.Id, snapshot.Version, snapshot.Sha256);
+        attempt = output!.Begin(entry!.Id, snapshot.Version, snapshot.Sha256, settings);
         log!.LogInfo($"Rendering {size}x{size} replay {entry.Id:D}, players {players[0].Id} and {players[1].Id} (including eliminated players).");
         SetPhase(Phase.Load);
     }
 
     private static void Publish()
     {
-        ReplayManifest manifest = output!.Commit(attempt!, snapshot == null ? throw new InvalidOperationException("Missing replay snapshot.") : CaptureSession.ValidateMap(CaptureSession.ReadState(snapshot.Bytes)), players.Select(p => (int)p.Id).ToArray());
-        // A crash or catalog conflict here is recovered from the manifest next start.
+        GameState state = CaptureSession.ReadState(snapshot?.Bytes ?? throw new InvalidOperationException("Missing replay snapshot."));
+        var mapping = AnnotationMapping.Default;
+        var participants = players.Select(p =>
+        {
+            PlayerState player = state.PlayerStates[p.Index];
+            int tribe = mapping.MapTribe(player.tribe.ToString()), skin = mapping.MapSkin(player.GetVisualSkin().ToString());
+            return new ReplayParticipant { Id = p.Id, TribeId = tribe, SkinId = skin, TribeSkin = mapping.CompactAppearance(tribe, skin) };
+        }).ToArray();
+        ReplayManifest manifest = output!.Commit(attempt!, CaptureSession.ValidateMap(state), participants);
         attempt = null;
-        catalog!.Mark(entry!.Id, ReplayStatus.Done, manifest.DirectoryPath);
-        done++;
-        log!.LogInfo($"Captured {done}/{Total}: {manifest.DirectoryPath}");
+        done++; // Publication is success, even if progress reconciliation needs recovery.
         snapshot = null;
+        try
+        {
+            catalog!.Mark(entry!.Id, ReplayStatus.Done, manifest.DirectoryPath);
+            string root = Path.GetDirectoryName(manifest.DirectoryPath)!;
+            CaptureStatistics.Rebuild(root, Path.Combine(root, "output.json"), message => log!.LogWarning(message));
+        }
+        catch (Exception e) { Finish("Published capture; progress reconciliation requires restart: " + e.Message); return; }
+        log!.LogInfo($"Captured {done}/{Total}: {manifest.DirectoryPath}");
         SetPhase(Phase.Next);
     }
 
@@ -264,15 +293,6 @@ public static class LoopMod
         // Do not log request bodies, authentication, or exception object graphs.
         log!.LogWarning($"Replay {entry?.Id.ToString("D") ?? "queue"} failed{(session == null ? "" : " during " + session.LoadStage)}: {failure}");
         attemptFailed = true;
-        if (exception is UnauthorizedAccessException)
-        {
-            // A rejected/missing account token affects the whole queue, not one replay.
-            try { if (entry != null) catalog!.Mark(entry.Id, ReplayStatus.RetryableError, error: failure); }
-            catch (Exception e) { log!.LogWarning("Could not record authentication failure: " + e.Message); }
-            failed++;
-            Finish("Replay capture stopped: " + failure);
-            return;
-        }
         if (session != null || GameManager.Instance.isLevelLoaded || GameManager.Instance.isLoadingGame)
         {
             BeginUnload();
@@ -363,6 +383,8 @@ public static class LoopMod
             source = null;
             catalog?.Dispose();
             catalog = null;
+            outputLock?.Dispose();
+            outputLock = null;
             cancellation?.Dispose();
             cancellation = null;
             entry = null;

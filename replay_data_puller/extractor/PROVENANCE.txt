@@ -1,0 +1,173 @@
+VENDORED EXTRACTOR PROVENANCE
+=============================
+
+Review date: 2026-10-27
+Input archive: C:\Users\xiaoc\Downloads\PolytopiaReplayExtractor-main.zip
+Archive length: 32580 bytes
+Archive SHA256: b6a9c615e3885910b9ff1b621d9aa65a3265ca7a9d0a89162a1dc6a28d7160fd
+Archive prefix: PolytopiaReplayExtractor-main/
+Source URL: not established from the supplied archive; none asserted.
+Upstream revision, author and release date: not established.
+License: no LICENSE file or license grant found in supplied files. Vendoring
+does not establish permission to redistribute; confirm licensing separately.
+
+Scope and review
+----------------
+All nine archive files were read in full before copying; model.py and wire.py
+were reviewed in bounded chunks. Extraction used a new empty isolated temporary
+directory with path, symlink, duplicate and size checks. Python readers used -I.
+No downloaded scripts/modules were executed/imported. No installs, token reads,
+live requests, commits or pushes were performed as part of this vendoring task.
+install-cli.sh is retained as reviewed upstream source, NOT executed. Its CRLF
+copy is not a ready-to-run POSIX installer; do not execute downloaded installers.
+The upstream README describes upstream installation, not approved local steps.
+
+Intentional patch P001: line-ending normalization only
+-----------------------------------------------------
+All nine copied UTF-8 text files, including source, documentation, requirements
+and .gitignore, have CRLF line endings. Normalization replaces CRLF and lone CR
+with LF, then every LF with CRLF. No other bytes, names, imports, logic, comments,
+or upstream substance were changed. No BOM or missing final newline was added.
+No functional/security fixes were applied; unsafe upstream paths remain present
+for fidelity and must not be used by a response collector.
+
+SHA256 manifest (original archive member -> vendored bytes)
+---------------------------------------------------------
+.gitignore
+  original bytes: 42
+  original SHA256: 734c72c0f18bbc9584c8f35a0a07a96aa9a55826d70f7dd9322e34288753c576
+  vendored bytes: 46
+  vendored SHA256: fec71f3fe74fd63e7642eb1d0293ea5b2ea450afd0827ea0a7933a1cc0f8f0bd
+README.md
+  original bytes: 981
+  original SHA256: 8ddfe91bc166539195c96973766dca9e099aa0d3e307c5997e08b8f2b42a7dec
+  vendored bytes: 1009
+  vendored SHA256: ddd0c7b9499f1fb4aaa7c089ccf38afc9dd8f570d0399af606839a41e6235b4c
+__init__.py
+  original bytes: 8201
+  original SHA256: 5e001e71cc6675705ab2906b36f2ae8ad5672b9354e4cb932466266ac37f582c
+  vendored bytes: 8467
+  vendored SHA256: 7a6f5beec3fd4eb0b73e82803f0dcf15e2fd02db12b0057a8c343733c651bca3
+__main__.py
+  original bytes: 151
+  original SHA256: aca1f4f312e7a32927a03f838e956ce23d093a33e914aa27aae1c0f3faaa2e7a
+  vendored bytes: 156
+  vendored SHA256: 3b51d998b0ff69014f62d0548aaf54bf3fe161c564b28e22a679291d2a98f960
+api.py
+  original bytes: 13690
+  original SHA256: c84a584f5584233058ca6fda20ba97d9a4bc6d11058d7520875d5e56ab6cefd4
+  vendored bytes: 14100
+  vendored SHA256: b0cb34188a1164cefeb749c7d5d365e0f874bc417ba6134c2466f488082bfc77
+install-cli.sh
+  original bytes: 1447
+  original SHA256: a3dc0c9bee8c76020afda493ac972c3c36f6b5585b4078b5933ca1027b0e0095
+  vendored bytes: 1513
+  vendored SHA256: 270b190f7873dcfc7c5efaf790e5be6f07608032ccf1e18c950ede0bd430a1a3
+model.py
+  original bytes: 37087
+  original SHA256: a2e643745037c09416fc1e67edc16ac9032a35b6b5d3b2728a6c08a39153f13a
+  vendored bytes: 37924
+  vendored SHA256: 563dac6ae6573f4ad7c22a7ee3705c9f9d580ec86ab04a36b162d50af85bdc41
+requirements.txt
+  original bytes: 4
+  original SHA256: 717ebf83115474d4a8e344dfc6b1a94c282eedea469b7c96de6da4ee2ad30f32
+  vendored bytes: 5
+  vendored SHA256: 173a073410c1192a3dda699675779558cfdddf07879aa1b0af920e7f57ee876b
+wire.py
+  original bytes: 53274
+  original SHA256: c989a9184a70568f9e6e9e043afe33215e5c102a6d2ae8cb752b4067f1f517d9
+  vendored bytes: 54984
+  vendored SHA256: 24ab132a7f8967462017f4673418eca3c1a63f37475473d502b9195317402765
+PROVENANCE.txt is local documentation, not an upstream archive member, and is
+not included in its own manifest.
+
+Reusable api.py helpers (without lz4)
+------------------------------------
+api.py has standard-library top-level imports; no top-level requests or writes.
+Load it explicitly from its trusted absolute path under Python -I, independently
+of cwd. Do not import the package __init__.py or run __main__.py: they use bare
+sibling imports. Snapshot/token/UUID helpers require neither lz4 nor GameState.
+
+Token discovery: _data_roots() -> list[Path], find_jwt_files() -> list[Path],
+newest_jwt() -> Path | None, load_jwt() -> str (takes NO arguments). On Windows,
+roots include home/AppData/LocalLow, LOCALAPPDATA or home/AppData/Local, and
+home/AppData/Roaming. macOS/Linux Unity roots are also tried. DIR_GLOBS matches
+com.midjiwan.polytopia*, *polytopia*, *Polytopia*, *midjiwan*, *Midjiwan*; recursive
+exact jwtToken files are resolved/deduplicated; newest st_mtime wins. load_jwt
+reads UTF-8 and strips, raising FileNotFoundError for absent/empty token. These
+helpers do not print the token; keep credentials in memory, never logs or argv.
+Caveats: broad discovery, symlink targets outside roots, filesystem races/errors,
+unbounded token reads, and no validation of token expiry or authenticity.
+
+parse_game_id(link_or_id: str) -> UUID strips, tries UUID(text), then searches
+for a UUID substring, optionally after share.polytopia.io/g/ or opengame?id=.
+It does not enforce a trusted share host or require the entire input to match.
+Its ValueError embeds the supplied input; do not log unrelated HAR strings.
+
+BACKEND = https://polytopia-prod.net
+GET_GAME_VIEW_MODEL = https://polytopia-prod.net/api/game/get_game_view_model
+SPECTATE_GAME = https://polytopia-prod.net/api/game/spectate_game
+The upstream authenticated POST payload is {"GameId": str(game_id)}.
+
+normalize_snapshot(which: Optional[str] = None) -> str maps None/False/empty/
+end/current/final/finished to end; True/start/initial/begin/beginning to start;
+otherwise raises ValueError. game_state_bytes(out: dict[str, Any], *,
+which: str = "end") -> bytes selects initial_game_state_data/initialGameStateData
+or current_game_state_data/currentGameStateData and base64-decodes. Pass the
+data mapping (resp["data"] for raw server responses), not the response envelope.
+Missing blob raises KeyError. Base64 decoding is permissive and unbounded; retain
+raw responses first and treat decoding failure independently of persistence.
+
+Response/error/state schema observed in this archive
+---------------------------------------------------
+api.py accesses envelope success, data, errorMessage, errorCode. data fields
+accessed are id, state, dateCreated, dateLastCommand, ownerId, gameSettingsJson,
+timerSettings, gameContext, currentGameStateData and initialGameStateData. This
+is not an exhaustive response schema and unknown fields must be retained.
+api.py defines STATE_ENDED = 4, commented as GameSessionState.Ended; its comment
+calls state 3 in-progress. It defines NO ErrorCode enum and NO complete
+GameSessionState enum. Do not infer success from errorCode == 0. Exact complete
+server enum names/numbers require separately established native definitions.
+model.py's DIFFERENT snapshot GameState.State is documented as Unknown=0,
+Lobby=1, Started=2, FinalTurn=3, Ended=4. wire.py comments mention
+ErrorCode.GameStateDeserializationFailed (1012), but define no ErrorCode enum.
+
+Snapshot wrapper versions without importing wire.py/lz4
+-----------------------------------------------------
+wire.deserialize reads signed little-endian int32 outer_version at offset 0
+and GameState.Version at offset 4, then requires equality. For an API base64
+snapshot, len(blob) >= 8 permits struct.unpack_from("<ii", blob, 0) to inspect
+both headers without full parsing, importing wire.py, or requiring lz4. Preserve
+unknown/mismatched values and raw blobs rather than rejecting them. This layout
+is for uncompressed API snapshots, NOT the first bytes of K4os .state files.
+wire.serialize_api_blob writes those same two int32 headers. K4os .state pickle
+flags use low 3 bits for pickle version (supported version 0), high 2 bits for
+a signed size-difference field of 0/1/2/4 bytes; field length 0 is uncompressed
+payload after the flags byte. Compressed paths need lz4.block. Even uncompressed
+lz4_unpickle imports lz4.block before inspecting flags. Local/hotseat payloads
+then begin with a version and contain two/three serialized GameStates.
+wire constants CURRENT_VERSION=122, LOCAL_SAVE_VERSION=116, LIVE_SAVE_VERSION=123
+are upstream codec assumptions, NOT collector filters or proof of renderability.
+
+Review concerns: upstream pathways not suitable for collector reuse
+------------------------------------------------------------------
+- api_post logs HTTP error bodies; _api_post_curl puts Bearer JWT in process argv,
+  and exception tracebacks can expose it. Curl paths log stdout/stderr and invalid
+  JSON bodies. Avoid these transport/error logging paths.
+- fetch_game_view_model logs complete failures and falls back indiscriminately;
+  it does not distinguish authentication, explicit access denial or rate limits,
+  and discards the first response when fallback succeeds.
+- Response reads are unbounded. urllib has a 60-second timeout; curl fallback has
+  no explicit timeout, does not fail on HTTP status, and loses status/headers.
+- build_output requires a current blob and reduces/renames response fields.
+  fetch_game_data defaults ended-only and caches beside executable source.
+  Do not use reduced output, ended gate or .share_cache as the raw archive.
+- Package entrypoints use cwd-sensitive sibling imports. model.py lazily imports
+  absent mapgenerator.settings in GetMapGeneratorSettings. requirements.txt has
+  an unpinned lz4 dependency. No dependency was installed for this review.
+- Full binary parsing is version/layout-dependent, rejects header mismatches,
+  unknown command/action layouts and trailing bytes, permits recursive units,
+  and has no comprehensive size/count/depth limits. Do not run full parsing on
+  responses merely to persist them. Reduced JSON conversion also loses fields.
+- Preserved upstream code is not an approval to execute installers, fetch live
+  data, bypass service protections, log secrets, or redistribute unlicensed code.

@@ -7,6 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
+    <Compile Remove=".claude\**\*.cs" />
+    <EmbeddedResource Include="src\annotation-mapping.json" LogicalName="BoardCaptureLoop.annotation-mapping.json" />
     <PackageReference Include="PolyMod" Version="1.2.14" />
   </ItemGroup>
 </Project>

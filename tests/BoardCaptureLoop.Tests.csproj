@@ -14,5 +14,11 @@
     <Compile Include="..\src\ReplayCatalog.cs" Link="ReplayCatalog.cs" />
     <Compile Include="..\src\ReplaySource.cs" Link="ReplaySource.cs" />
     <Compile Include="..\src\ReplayOutput.cs" Link="ReplayOutput.cs" />
+    <Compile Include="..\src\CaptureSettings.cs" Link="CaptureSettings.cs" />
+    <Compile Include="..\src\CaptureStatistics.cs" Link="CaptureStatistics.cs" />
+    <Compile Include="..\src\CaptureMigration.cs" Link="CaptureMigration.cs" />
+    <Compile Include="..\src\TileAnnotations.cs" Link="TileAnnotations.cs" />
+    <Compile Include="..\src\AnnotationMapping.cs" Link="AnnotationMapping.cs" />
+    <EmbeddedResource Include="..\src\annotation-mapping.json" LogicalName="BoardCaptureLoop.annotation-mapping.json" />
   </ItemGroup>
 </Project>

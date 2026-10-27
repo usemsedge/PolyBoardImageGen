@@ -1,6 +1,6 @@
 # Replay capture specification
 
-**Target implementation.** See [README.md](README.md) for setup, workflow, migration, and build instructions. Annotations are required now; these documents do not imply the features already exist.
+**Capture contract.** See [README.md](README.md) for setup, workflow, migration, build instructions, and ML tooling. Native rendering edge cases require in-game verification.
 
 ## Settings
 

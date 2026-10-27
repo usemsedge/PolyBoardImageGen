@@ -1,0 +1,4 @@
+# Install the torch/torchvision wheel pair for your CPU or CUDA runtime separately if needed.
+torch>=2.6,<3
+torchvision>=0.21,<1
+Pillow>=11,<13

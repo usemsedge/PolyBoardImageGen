@@ -124,7 +124,7 @@ internal sealed class CaptureSession : IDisposable
         return true;
     }
 
-    internal void CaptureTo(string prefix)
+    internal void CaptureTo(string prefix, Guid replayId, CaptureSettings settings, Action<string> log)
     {
         if (!OwnsCurrentClient || !Configured || !GameManager.IsPlayerViewing(PlayerId))
             throw new InvalidOperationException("Replay capture lost its viewing-player context.");
@@ -133,7 +133,11 @@ internal sealed class CaptureSession : IDisposable
         byte[] actual = SerializationHelpers.ToByteArray(Client.GameState, state.Version);
         if (!expectedState.AsSpan().SequenceEqual(actual))
             throw new InvalidOperationException("Native replay initialization changed the final game state.");
-        Capture.Save(prefix, Size);
+        TileAnnotationDocument annotations = NativeAnnotations.Read(Client.GameState, replayId, PlayerId, Revealed, log);
+        Capture.Save(prefix, Size, settings);
+        byte[] after = SerializationHelpers.ToByteArray(Client.GameState, state.Version);
+        if (!expectedState.AsSpan().SequenceEqual(after)) throw new InvalidOperationException("Capture or annotation extraction changed final state.");
+        File.WriteAllText(prefix + ".tiles.json", System.Text.Json.JsonSerializer.Serialize(annotations, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 
     public void Dispose()

@@ -1,0 +1,4 @@
+*.state
+*.json
+__pycache__/
+.share_cache/

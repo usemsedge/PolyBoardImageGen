@@ -184,13 +184,14 @@ public sealed class ReplayTests : IDisposable
     {
         string csv = Csv("REPLAY LINK\r\n" + Link(A) + "\r\n");
         var output = new ReplayOutput(Path.Combine(directory, "captures"));
-        var attempt = output.Begin(A, 123, new string('a', 64));
+        var attempt = output.Begin(A, 123, new string('a', 64), new CaptureSettings { ShowGridOverlay = true });
         Assert.False(output.TryRecover(A, out _));
         Fill(attempt.DirectoryPath);
-        var manifest = output.Commit(attempt, 11, new[] { 1, 7 });
+        var manifest = output.Commit(attempt, 1, OutputFixture.Participants);
         Assert.False(Directory.Exists(attempt.DirectoryPath));
-        Assert.Equal(12, manifest.Artifacts.Length);
-        Assert.Equal(4, manifest.Views.Length);
+        Assert.Equal(8, manifest.Artifacts.Length);
+        Assert.Equal(2, manifest.Views.Length);
+        Assert.All(manifest.Views, view => Assert.EndsWith("-normal", view));
         Assert.Equal(new string('a', 64), manifest.SnapshotSha256);
         Assert.Equal(123, manifest.SerializationVersion);
         using (var catalog = ReplayCatalog.Open(csv)) Assert.Single(catalog.GetPending());
@@ -198,14 +199,14 @@ public sealed class ReplayTests : IDisposable
         Assert.True(restarted.TryRecover(A, out var recovered));
         using (var catalog = ReplayCatalog.Open(csv)) catalog.Mark(A, ReplayStatus.Done, recovered!.DirectoryPath);
         using (var catalog = ReplayCatalog.Open(csv)) Assert.Empty(catalog.GetPending());
-        Assert.Throws<IOException>(() => restarted.Begin(A, 123));
+        Assert.Throws<IOException>(() => restarted.Begin(A, 123, settings: new CaptureSettings { ShowGridOverlay = true }));
         File.AppendAllText(Path.Combine(manifest.DirectoryPath, "player-1-normal.grid.json"), " ");
         Assert.False(restarted.TryRecover(A, out _));
-        var replacement = restarted.Begin(A, 123);
+        var replacement = restarted.Begin(A, 123, settings: new CaptureSettings { ShowGridOverlay = true });
         string quarantined = Assert.Single(Directory.GetDirectories(Path.Combine(directory, "captures"), ".invalid-*"));
         Assert.True(File.Exists(Path.Combine(quarantined, "manifest.json")));
         Fill(replacement.DirectoryPath);
-        restarted.Commit(replacement, 11, new[] { 1, 7 });
+        restarted.Commit(replacement, 1, OutputFixture.Participants);
         Assert.True(restarted.TryRecover(A, out _));
     }
 
@@ -217,13 +218,13 @@ public sealed class ReplayTests : IDisposable
     public void OutputRejectsIncompleteCorruptOrMismatchedArtifacts(string corruption)
     {
         var output = new ReplayOutput(Path.Combine(directory, "captures"));
-        var attempt = output.Begin(A, 123); Fill(attempt.DirectoryPath);
+        var attempt = output.Begin(A, 123, settings: new CaptureSettings { ShowGridOverlay = true }); Fill(attempt.DirectoryPath);
         string prefix = Path.Combine(attempt.DirectoryPath, "player-1-normal");
         if (corruption == "missing") File.Delete(prefix + ".grid.png");
         if (corruption == "dimensions") File.WriteAllBytes(prefix + ".grid.png", Png(3, 2));
         if (corruption == "projection") File.WriteAllText(prefix + ".grid.json", "{\"size\":11,\"width\":2,\"height\":2,\"anchor\":[0,0],\"stepX\":[0,0],\"stepY\":[0,0]}");
         if (corruption == "png-crc") { byte[] bytes = File.ReadAllBytes(prefix + ".png"); bytes[30] ^= 1; File.WriteAllBytes(prefix + ".png", bytes); }
-        Assert.ThrowsAny<Exception>(() => output.Commit(attempt, 11, new[] { 1, 7 }));
+        Assert.ThrowsAny<Exception>(() => output.Commit(attempt, 1, OutputFixture.Participants));
         Assert.False(output.TryRecover(A, out _));
         output.Abandon(attempt); Assert.False(Directory.Exists(attempt.DirectoryPath));
     }
@@ -232,11 +233,11 @@ public sealed class ReplayTests : IDisposable
     public void OutputValidatesManifestIdentityAndForeignAttempts()
     {
         string root = Path.Combine(directory, "captures"); var output = new ReplayOutput(root);
-        var attempt = output.Begin(A, 123); Fill(attempt.DirectoryPath);
+        var attempt = output.Begin(A, 123, settings: new CaptureSettings { ShowGridOverlay = true }); Fill(attempt.DirectoryPath);
         Assert.Throws<InvalidDataException>(() => output.Commit(attempt, 11, new[] { 1, 1 }));
         Assert.Throws<InvalidDataException>(() => output.Commit(attempt, 101, new[] { 1, 7 }));
         Assert.Throws<InvalidOperationException>(() => new ReplayOutput(root).Abandon(attempt));
-        var manifest = output.Commit(attempt, 11, new[] { 1, 7 });
+        var manifest = output.Commit(attempt, 1, OutputFixture.Participants);
         manifest.Views[0] = "player-99-normal";
         File.WriteAllText(Path.Combine(manifest.DirectoryPath, "manifest.json"), JsonSerializer.Serialize(manifest));
         Assert.False(output.TryRecover(A, out _));
@@ -262,15 +263,7 @@ public sealed class ReplayTests : IDisposable
             Auth.Add(request.Headers.Authorization!.ToString()); return await reply(request, Endpoints.Count, cancellationToken);
         }
     }
-    private static void Fill(string directory)
-    {
-        foreach (int player in new[] { 1, 7 }) foreach (string mode in new[] { "normal", "revealed" })
-        {
-            string prefix = Path.Combine(directory, $"player-{player}-{mode}");
-            File.WriteAllBytes(prefix + ".png", Png(2, 2)); File.WriteAllBytes(prefix + ".grid.png", Png(2, 2));
-            File.WriteAllText(prefix + ".grid.json", "{\"size\":11,\"width\":2,\"height\":2,\"anchor\":[0,0],\"stepX\":[1,0],\"stepY\":[0,1]}");
-        }
-    }
+    private static void Fill(string directory) => OutputFixture.Fill(directory, A, overlay: true);
     private static byte[] Png(int width, int height)
     {
         using var result = new MemoryStream(); result.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });

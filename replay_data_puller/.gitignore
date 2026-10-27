@@ -1,0 +1,10 @@
+# Private server responses, queues, pacing deadlines and local reports.
+/data/
+*.csv
+*.lock
+*.pacing.json
+*.summary.json
+*.log
+__pycache__/
+*.pyc
+.pending-*

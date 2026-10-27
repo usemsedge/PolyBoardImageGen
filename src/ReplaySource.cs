@@ -78,6 +78,18 @@ public sealed class ReplaySource : IDisposable
         catch (JsonException) { throw new InvalidDataException("Replay service returned malformed JSON."); }
     }
 
+    public static ReplaySnapshot LoadLocal(Guid id, string directory)
+    {
+        if (id == Guid.Empty) throw new ArgumentException("Replay ID cannot be empty.", nameof(id));
+        string path = Path.Combine(directory, id.ToString("D") + ".json");
+        using JsonDocument document = StrictJson.ReadFile(path, MaxResponseBytes);
+        if (!TryData(document.RootElement, out var data)) throw new InvalidDataException("Local replay response was not successful.");
+        if (data.TryGetProperty("id", out var replayId) &&
+            (replayId.ValueKind != JsonValueKind.String || !Guid.TryParse(replayId.GetString(), out Guid actual) || actual != id))
+            throw new InvalidDataException("Local replay identity does not match the queue.");
+        return Decode(id, data);
+    }
+
     private static bool TryData(JsonElement root, out JsonElement data)
     {
         data = default;

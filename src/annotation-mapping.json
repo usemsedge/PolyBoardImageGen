@@ -1,0 +1,49 @@
+{
+  "version": "54457a8bdef9baa863ebc0926eb8c31ea0d06c41-palette28-v1",
+  "source_commit": "54457a8bdef9baa863ebc0926eb8c31ea0d06c41",
+  "palette_version": 28,
+  "enums": {
+    "terrain": { "NONE": 0, "WATER": 1, "OCEAN": 2, "FIELD": 3, "MOUNTAIN": 4, "FOREST": 5, "ICE": 6, "WETLAND": 7, "MANGROVE": 8 },
+    "resource": { "NONE": 0, "GAME": 1, "CROP": 2, "FISH": 3, "WHALE": 4, "METAL": 5, "FRUIT": 6, "SPORES": 7, "STARFISH": 8, "AQUACROP": 9 },
+    "improvement": {
+      "NONE": 0, "CITY": 1, "RUIN": 2, "ROAD": 3, "CUSTOMS_HOUSE": 4, "FARM": 5, "WINDMILL": 6, "FISHING": 7, "PORT": 8, "HUNTING": 9,
+      "CLEAR_FOREST": 10, "BURN_FOREST": 11, "LUMBER_HUT": 12, "SAWMILL": 13, "GROW_FOREST": 14, "HARVEST_FRUIT": 15, "WHALE_HUNTING": 16,
+      "TEMPLE": 17, "FOREST_TEMPLE": 18, "WATER_TEMPLE": 19, "MOUNTAIN_TEMPLE": 20, "MINE": 21, "FORGE": 22,
+      "MONUMENT1": 23, "MONUMENT2": 24, "MONUMENT3": 25, "MONUMENT4": 26, "MONUMENT5": 27, "MONUMENT6": 28, "MONUMENT7": 29,
+      "ENCHANT_ANIMAL": 30, "ENCHANT_WHALE": 31, "SANCTUARY": 32, "OUTPOST": 33, "ICE_BANK": 34, "ICE_TEMPLE": 35,
+      "POLARIS_CLIMATE": 36, "FUNGI": 37, "ALGAE": 38, "MYCELIUM": 39, "BURN_SPORES": 40, "CLATHRUS": 41, "HIDDEN_SANCTUARY": 42,
+      "HARVEST_SPORES": 43, "NULL_BUILDING": 44, "CULTIVATE": 45, "STAR_FISHING": 46, "LIGHTHOUSE": 47, "BRIDGE": 48,
+      "AQUAFARM": 49, "MARKET": 50, "ATOLL": 51, "CANAL": 52, "FERTILIZE": 53, "LANDFILL": 54, "ALGAE_SPAWN": 55
+    },
+    "unit": {
+      "NONE": 0, "SCOUT": 1, "WARRIOR": 2, "RIDER": 3, "KNIGHT": 4, "DEFENDER": 5, "SHIP": 6, "BATTLESHIP": 7, "CATAPULT": 8,
+      "ARCHER": 9, "MINDBENDER": 10, "SWORDSMAN": 11, "GIANT": 12, "BUNNY": 13, "BOAT": 14, "POLYTAUR": 15, "NAVALON": 16,
+      "DRAGON_EGG": 17, "BABY_DRAGON": 18, "FIRE_DRAGON": 19, "AMPHIBIAN": 20, "TRIDENTION": 21, "MOONI": 22, "BATTLE_SLED": 23,
+      "ICE_FORTRESS": 24, "ICE_ARCHER": 25, "CRAB": 26, "GAAMI": 27, "HEXAPOD": 28, "DOOMUX": 29, "PHYCHI": 30, "KITON": 31,
+      "EXIDA": 32, "CENTIPEDE": 33, "SEGMENT": 34, "RAYCHI": 35, "SHAMAN": 36, "DAGGER": 37, "CLOAK": 38, "CLOAK_BOAT": 39,
+      "PIRATE": 40, "BOMBERSHIP": 41, "SCOUTSHIP": 42, "TRANSPORTSHIP": 43, "RAMMERSHIP": 44, "JUGGERNAUT": 45,
+      "MERMAID_WARRIOR": 46, "MERMAID_ARCHER": 47, "MERMAID_SWORDSMAN": 48, "MERMAID_DEFENDER": 49, "MERMAID_CLOAK": 50,
+      "MERMAID_DAGGER": 51, "JELLY": 52, "SHARK": 53, "SIREN": 54, "AQUAPULT": 55, "BOOMCHI": 56, "ISLAND": 57, "CIRU": 58,
+      "MANTIS": 59, "BUG_EGG": 60, "MOTH": 61, "LARVA": 62
+    },
+    "tribe": { "NONE": 0, "NATURE": 1, "AIMO": 2, "AQUARION": 3, "BARDUR": 4, "ELYRION": 5, "HOODRICK": 6, "IMPERIUS": 7, "KICKOO": 8, "LUXIDOOR": 9, "OUMAJI": 10, "QUETZALI": 11, "VENGIR": 12, "XINXI": 13, "YADAKK": 14, "ZEBASI": 15, "POLARIS": 16, "CYMANTI": 17 },
+    "skin": { "NONE": -1, "DEFAULT": 0, "RANGER": 1, "NINJA": 2, "BAERION": 3, "SCHOLAR": 5, "MERCENARY": 7, "SFINX": 8, "SKELETON": 9, "ARTY": 10, "PIRATE": 11, "AIBO": 12, "URKAZ": 13, "IKARUS": 14, "DARKELF": 15, "SWAMP": 17, "MAGMA": 18, "CUTE": 19 }
+  },
+  "tribe_skin": { "2": 12, "3": 17, "4": 3, "5": 15, "6": 1, "7": 5, "8": 11, "9": 7, "10": 8, "11": 14, "12": 9, "13": 2, "14": 13, "15": 10, "16": 18, "17": 19 },
+  "tribe_colors": { "0": 0, "1": 13816530, "2": 3596970, "3": 15958913, "4": 3482900, "5": 16711833, "6": 10053120, "7": 255, "8": 65280, "9": 11221974, "10": 16776960, "11": 2579530, "12": 16777215, "13": 13369344, "14": 8200988, "15": 16750848, "16": 11968901, "17": 12778752 },
+  "skin_colors": { "17": 6786096 },
+  "readable_colors": [
+    { "name": "black", "rgb": [0, 0, 0] }, { "name": "light_gray", "rgb": [210, 210, 210] },
+    { "name": "mint", "rgb": [54, 226, 170] }, { "name": "salmon", "rgb": [243, 131, 129] },
+    { "name": "dark_brown", "rgb": [53, 37, 20] }, { "name": "magenta", "rgb": [255, 0, 153] },
+    { "name": "brown", "rgb": [153, 102, 0] }, { "name": "blue", "rgb": [0, 0, 255] },
+    { "name": "green", "rgb": [0, 255, 0] }, { "name": "purple", "rgb": [171, 59, 214] },
+    { "name": "yellow", "rgb": [255, 255, 0] }, { "name": "dark_green", "rgb": [39, 92, 74] },
+    { "name": "white", "rgb": [255, 255, 255] }, { "name": "red", "rgb": [204, 0, 0] },
+    { "name": "maroon", "rgb": [125, 35, 28] }, { "name": "orange", "rgb": [255, 153, 0] },
+    { "name": "tan", "rgb": [182, 161, 133] }, { "name": "lime", "rgb": [194, 253, 0] },
+    { "name": "olive_green", "rgb": [103, 140, 48] }
+  ],
+  "legacy_tribe_order": [0, 13, 7, 4, 10, 8, 6, 9, 12, 15, 2, 3, 11, 5, 14, 16, 17],
+  "aliases": { "terrain": {}, "resource": {}, "improvement": {}, "unit": {}, "tribe": {}, "skin": {} }
+}

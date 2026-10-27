@@ -6,7 +6,7 @@ namespace BoardCaptureLoop;
 
 internal static class Capture
 {
-    internal static void Save(string prefix, int size)
+    internal static void Save(string prefix, int size, CaptureSettings settings)
     {
         if (size < 1 || size > 100) throw new ArgumentOutOfRangeException(nameof(size), "Supported square maps have 1–100 tiles per side.");
         int width = Screen.width, height = Screen.height;
@@ -33,7 +33,7 @@ internal static class Capture
             Vector3 midpoint = origin + (alongX + alongY) * ((size - 1) / 2f);
             Vector3 displacement = midpoint - position;
             camera.transform.position += right * Vector3.Dot(displacement, right) + up * Vector3.Dot(displacement, up);
-            float extent = (size - 1) / 2f + 5f;
+            float extent = (size - 1) / 2f + 1.5f;
             float horizontal = extent * (Mathf.Abs(Vector3.Dot(alongX, right)) + Mathf.Abs(Vector3.Dot(alongY, right)));
             float vertical = extent * (Mathf.Abs(Vector3.Dot(alongX, up)) + Mathf.Abs(Vector3.Dot(alongY, up)));
             camera.orthographicSize = Mathf.Max(vertical, horizontal / camera.aspect) * 1.05f;
@@ -50,7 +50,7 @@ internal static class Capture
                         throw new InvalidOperationException("Projected board exceeds capture bounds.");
                 }
 
-            int tilePixels = CaptureResolution.ParseTarget(Environment.GetEnvironmentVariable("BOARDCAPTURELOOP_TILE_PIXELS"));
+            int tilePixels = settings.TargetTilePixels;
             Vector3 p = default, px = default, py = default;
             bool sized = false;
             for (int iteration = 0; iteration < 8; iteration++)
@@ -79,7 +79,7 @@ internal static class Capture
                         throw new InvalidOperationException("Projected board exceeds final capture bounds.");
                 }
             buffer = new RenderTexture(width, height, 24);
-            if (!buffer.Create()) throw new InvalidOperationException($"Could not allocate the {width}x{height} capture render target. Lower BOARDCAPTURELOOP_TILE_PIXELS.");
+            if (!buffer.Create()) throw new InvalidOperationException($"Could not allocate the {width}x{height} capture render target. Lower target_tile_pixels in settings.json.");
             image = new Texture2D(width, height, TextureFormat.RGB24, false);
             camera.targetTexture = buffer;
             var vx = new[] { ((double)px.x - p.x) * width, ((double)p.y - px.y) * height };
@@ -97,6 +97,7 @@ internal static class Capture
                 otherSideLengthPixels = Math.Sqrt(vy[0] * vy[0] + vy[1] * vy[1])
             };
             File.WriteAllText(prefix + ".grid.json", JsonSerializer.Serialize(grid, new JsonSerializerOptions { WriteIndented = true }));
+            if (!settings.ShowGridOverlay) return;
             var pixels = image.GetPixels32();
             for (int i = 0; i <= size; i++)
             {

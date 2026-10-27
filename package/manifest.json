@@ -1,7 +1,7 @@
 {
   "id": "boardcaptureloop",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "authors": ["BoardCaptureLoop"],
   "name": "Board Capture Loop",
-  "description": "Capture final two-player replay states from a resumable CSV queue, with normal and fully revealed player views and grid overlays."
+  "description": "Capture final replay POVs with tile annotations, optional grids, resumable progress, and cumulative tribe statistics."
 }

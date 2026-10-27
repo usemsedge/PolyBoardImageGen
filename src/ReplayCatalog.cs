@@ -115,6 +115,46 @@ public sealed class ReplayCatalog : IDisposable
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
+    public string CsvPath => path;
+
+    public void ResetCompleted(IReadOnlyCollection<Guid> ids)
+    {
+        ThrowIfDisposed();
+        var selected = new HashSet<Guid>(ids);
+        var updated = rows.Select(r => new List<string>(r)).ToList();
+        bool changed = false;
+        foreach (Guid id in selected)
+        {
+            if (!rowIds.TryGetValue(id, out var indices)) continue;
+            foreach (int index in indices)
+            {
+                if (updated[index][statusColumn] != ReplayStatus.Done) continue;
+                updated[index][statusColumn] = ReplayStatus.RetryableError;
+                updated[index][outputColumn] = "";
+                updated[index][errorColumn] = "Queued for annotation migration.";
+                changed = true;
+            }
+        }
+        if (!changed) return;
+        if (!diskHash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(path))))
+            throw new IOException("Replay CSV changed outside this capture run; refusing migration update.");
+        byte[] bytes = new UTF8Encoding(bom).GetBytes(Serialize(updated));
+        if (bom) bytes = new byte[] { 239, 187, 191 }.Concat(bytes).ToArray();
+        string temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            { stream.Write(bytes, 0, bytes.Length); stream.Flush(true); }
+            if (!diskHash.SequenceEqual(SHA256.HashData(File.ReadAllBytes(path))))
+                throw new IOException("Replay CSV changed during migration update.");
+            File.Replace(temporary, path, path + ".bak", true);
+            diskHash = SHA256.HashData(bytes);
+            rows.Clear(); rows.AddRange(updated);
+            foreach (Guid id in selected) attempted.Remove(id);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+    }
+
     public static bool TryParseId(string link, out Guid id)
     {
         id = default;
